@@ -1,0 +1,68 @@
+package main
+
+import (
+	"fmt"
+	"log"
+	"net/http"
+	"net/http/pprof"
+	"os"
+	"strings"
+)
+
+func index(w http.ResponseWriter, r *http.Request) {
+	w.Write([]byte("<h1> Welcome to cloud native</h1>"))
+
+	//add header of request to respone
+	for k, v := range r.Header {
+		for _, vv := range v {
+			w.Header().Set(k, vv)
+		}
+	}
+	//setup version
+	os.Setenv("VERSION", "0.0.1")
+	version := os.Getenv("VERSION")
+	w.Header().Set("VERSION", version)
+	fmt.Printf("os version: %s \n", version)
+
+	//get client IP
+	// clientIP := r.RemoteAddr
+	// fmt.Println(clientIP)
+	//如果经过LB，proxy，remoteaddr取clientip是LB，proxy的地址
+	//不是真实用户地址
+	//X-REAL-IP
+	//X-FORWORD-FOR
+
+	clientIP := getCurrentIP(r)
+	httpCode := http.StatusOK
+	log.Printf("client ip: %s, status code: %d", clientIP, httpCode)
+
+}
+
+func getCurrentIP(r *http.Request) string {
+	ip := r.Header.Get("X-REAL-IP")
+	if ip == "" {
+		//RemoteAddr  formart => IP:PORT
+		ip = strings.Split(r.RemoteAddr, ":")[0]
+	}
+	return ip
+}
+
+func healthz(w http.ResponseWriter, r *http.Request) {
+	fmt.Fprintf(w, "working")
+}
+func main() {
+
+	mux := http.NewServeMux()
+	// mux.Hand
+	//debug
+	mux.HandleFunc("/debug/pprof/", pprof.Index)
+	mux.HandleFunc("/debug/pprof/profile", pprof.Profile)
+	mux.HandleFunc("/debug/pprof/symbol", pprof.Symbol)
+	mux.HandleFunc("/debug/pprof/trace", pprof.Trace)
+
+	mux.HandleFunc("/", index)
+	mux.HandleFunc("/healthz", healthz)
+	if err := http.ListenAndServe("localhost:8080", mux); err != nil {
+		log.Fatalf("Start server failed, error is: %s\n", err.Error())
+	}
+}
