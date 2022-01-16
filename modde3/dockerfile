@@ -6,9 +6,9 @@ GOARCH=amd64
 
 WORKDIR /build
 COPY . .
-RUN go build -o httpserver .
+RUN go build -o myhttpserver .
 
 FROM scratch
-COPY --from=builder /build/httpserver /
+COPY --from=builder /build/myhttpserver /
 EXPOSE 8080
-ENTRYPOINT ["/httpserver"]
+ENTRYPOINT ["/myhttpserver"]
